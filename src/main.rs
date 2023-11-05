@@ -4,8 +4,12 @@ use std::{
 	future::Future, 
 	task::{Poll, Context}, 
 	pin::Pin,
-	net::SocketAddr
 };
+use omnisette::anisette_headers_provider::AnisetteHeadersProvider;
+
+#[cfg(feature = "server")]
+use std::net::SocketAddr;
+#[cfg(feature = "server")]
 use axum::{
 	extract::State,
 	routing::get,
@@ -15,7 +19,7 @@ use axum::{
 
 type Headers = std::collections::HashMap<String, String>;
 
-#[cfg(not(target_os = "darwin"))]
+#[cfg(not(target_os = "macos"))]
 compile_error!("This only works on mac, as it requires calling into private apple APIs with objc");
 
 #[tokio::main]
@@ -29,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			data_rx: None,
 			pool: threadpool::ThreadPool::new(1)
 		}.await;
-		println!("{}", base64::encode(data));
+		println!("{}", serde_json::to_string(&data).unwrap());
 		Ok(())
 	}
 }
@@ -48,7 +52,11 @@ async fn start_server() -> Result<(), Box<dyn std::error::Error>> {
 		.route("/", get(anisette_req))
 		.with_state(pool);
 
-	axum::Server::bind(&SocketAddr::from(([127, 0, 0, 1], port)))
+	let addr = SocketAddr::from(([127, 0, 0, 1], port));
+
+	println!("Binding server to {addr:?}...");
+
+	axum::Server::bind(&addr)
 		.serve(app.into_make_service())
 		.await?;
 
@@ -59,8 +67,10 @@ fn generate_anisette() -> Headers {
 	omnisette::aos_kit::AOSKitAnisetteProvider::new()
 		.expect("This is completely useless if we can't load AOSKit")
 		.get_anisette_headers(false)
+		.expect("This implementation of get_anisette_headers doesn't ever actually return Err")
 }
 
+#[cfg(feature = "server")]
 async fn anisette_req(State(pool): State<ThreadPool>) -> Json<Headers> {
 	Json(AnisetteGenerator {
 		data_rx: None,
