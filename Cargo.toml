@@ -1,0 +1,21 @@
+[package]
+name = "anisette_generator"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+omnisette = { git = "https://github.com/itsjunetime/apple-private-apis.git" }
+tokio = { version = "1.33.0", features = ["macros", "rt-multi-thread"] }
+crossbeam-channel = "0.5.8"
+axum = { version = "0.6.20", optional = true, features = ["json"] }
+threadpool = "1.8.1"
+# we want this specific version of base64 'cause that was before they fucked up their API
+base64 = "0.20.0"
+
+[features]
+default = ["server"]
+server = ["dep:axum"]
+
+
